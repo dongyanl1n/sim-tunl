@@ -7,7 +7,7 @@ import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-mem, nomem, mem_vd, nomem_vd, it = [False, False, False, False, False]
+mem, nomem, mem_vd, nomem_vd = [False, False, False, False]
 mem = True
 env_title = 'Tunl Mem'
 
@@ -17,10 +17,7 @@ elif mem_vd or nomem_vd:
     len_delays = [20, 40, 60]
     len_delays_p = [1, 1, 1]
     ld = max(len_delays)
-elif it:
-    len_delay_short = 20
-    len_delay_long = 40
-    ld = len_delay_long
+
 
 len_edge = 7
 rwd = 100
@@ -37,8 +34,6 @@ elif mem_vd:
     env = Tunl_vd(len_delays, len_delays_p, len_edge, rwd, inc_rwd, step_rwd, poke_rwd, rng_seed)
 elif nomem_vd:
     env = Tunl_nomem_vd(len_delays, len_delays_p, len_edge, rwd, step_rwd, poke_rwd, rng_seed)
-elif it:
-    env = IntervalTiming(len_delay_short, len_delay_long, len_edge, rwd, inc_rwd, step_rwd, poke_rwd, rng_seed)
 
 n_neurons = 512
 lr = 1e-5
@@ -118,37 +113,31 @@ def ideal_nav_rwd(env, len_edge, len_delay, step_rwd, poke_rwd):
 
 # Train and record
 # Initialize arrays for recording
-if mem_vd or nomem_vd or it:
+if mem_vd or nomem_vd:
     len_delay = np.zeros(n_total_episodes, dtype=np.int8)  # length of delay for each trial
 
-if mem or mem_vd or it:
-    ct = np.zeros(n_total_episodes, dtype=np.int8)
+if mem or mem_vd:
+    ct = np.zeros(n_total_episodes, dtype=np.int8)  # whether it's a correction trial or not
 
-if not it:
-    stim = np.zeros((n_total_episodes, 2), dtype=np.int8)
-
-if l2_reg:
-    l2_losses = np.zeros(n_total_episodes, dtype=np.float16)
-
+stim = np.zeros((n_total_episodes, 2), dtype=np.int8)
 epi_nav_reward = np.zeros(n_total_episodes, dtype=np.float16)
 correct_perc = np.zeros(n_total_episodes, dtype=np.float16)
 choice = np.zeros((n_total_episodes, 2), dtype=np.int8)  # record the location when done
-delay_loc = np.zeros((n_total_episodes, ld, 2), dtype=np.int16)
-delay_resp_hx = np.zeros((n_total_episodes, ld, n_neurons), dtype=np.float32)
-delay_resp_cx = np.zeros((n_total_episodes, ld, n_neurons), dtype=np.float32)
+delay_loc = np.zeros((n_total_episodes, ld, 2), dtype=np.int16)  # location during delay
+delay_resp_hx = np.zeros((n_total_episodes, ld, n_neurons), dtype=np.float32)  # hidden states during delay
+delay_resp_cx = np.zeros((n_total_episodes, ld, n_neurons), dtype=np.float32)  # cell states during delay
 ideal_nav_rwds = np.zeros(n_total_episodes, dtype=np.float16)
 
-correct_counter = 0
+
 for i_episode in range(n_total_episodes):
     done = False
     env.reset()
     ideal_nav_rwds[i_episode] = ideal_nav_rwd(env, len_edge, env.len_delay, step_rwd, poke_rwd)
     net.reinit_hid()
-    if not it:
-        stim[i_episode] = env.sample_loc
-    if mem or mem_vd or it:
+    stim[i_episode] = env.sample_loc
+    if mem or mem_vd:
         ct[i_episode] = int(env.correction_trial)
-    if mem_vd or nomem_vd or it:
+    if mem_vd or nomem_vd:
         len_delay[i_episode] = env.len_delay  # For vd or it only
     while not done:
         pol, val = net.forward(
@@ -167,12 +156,7 @@ for i_episode in range(n_total_episodes):
     if env.reward == rwd:
         correct_perc[i_episode] = 1
     epi_nav_reward[i_episode] = env.nav_reward
-    if l2_reg:
-        p_loss, v_loss, l2_loss = finish_trial_l2(net, 0.99, optimizer, delay_resp_hx[i_episode].flatten(),
-                                                  lambda_l2=len_delay * n_neurons)
-        l2_losses[i_episode] = l2_loss
-    else:
-        p_loss, v_loss = finish_trial(net, 0.99, optimizer)
+    p_loss, v_loss = finish_trial(net, 0.99, optimizer)
 
 avg_nav_rewards = bin_rewards(epi_nav_reward, window_size)
 correct_perc = bin_rewards(correct_perc, window_size)
@@ -183,10 +167,7 @@ parent_dir = '/home/mila/l/lindongy/tunl2d/data'
 path = os.path.join(parent_dir, directory)
 os.mkdir(path)
 
-if l2_reg:
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(6, 9))
-else:
-    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(6, 6))
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(6, 6))
 
 fig.suptitle(env_title)
 
@@ -201,11 +182,6 @@ ax2.set_xlabel('episode')
 ax2.set_ylabel('correct %')
 ax2.legend()
 
-if l2_reg:
-    ax3.plot(np.arange(n_total_episodes), l2_losses, label=net_title)
-    ax3.set_xlabel('episode')
-    ax3.set_ylabel('L2 loss')
-    ax3.legend()
 
 # plt.show()
 fig.savefig(path+'/fig.png')
@@ -223,9 +199,6 @@ elif mem_vd:
                         delay_resp_hx=delay_resp_hx, delay_resp_cx=delay_resp_cx)
 elif nomem_vd:
     np.savez_compressed(path + '/data.npz', stim=stim, choice=choice, len_delay=len_delay, delay_loc=delay_loc,
-                        delay_resp_hx=delay_resp_hx, delay_resp_cx=delay_resp_cx)
-elif it:
-    np.savez_compressed(path + '/data.npz', choice=choice, ct=ct, len_delay=len_delay, delay_loc=delay_loc,
                         delay_resp_hx=delay_resp_hx, delay_resp_cx=delay_resp_cx)
 
 # save net
