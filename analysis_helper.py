@@ -18,7 +18,7 @@ from sklearn.linear_model import LinearRegression
 import plot_utils
 
 global figpath
-#figpath = '/Users/dongyanlin/Desktop/manuscript_figures/Mem_VD/20'
+#figpath = ''
 
 def make_autopct(values):
     def my_autopct(pct):
@@ -179,48 +179,6 @@ def plot_sorted_in_same_order(resp_a, resp_b, a_title, b_title, big_title, len_d
     plt.savefig(figpath + f'/sorted_in_same_order_{big_title}.png')
 
 
-def spatial_heatmap(i_neuron, h, w, resp, loc, title, norm_by_occupancy=True, norm_by_ptp=True, plot=False):
-    """
-    Returns the neural activity (may or may not be normalized by occupancy) at each location.
-    Arguments:
-    - i_neuron: index of neuron (int)
-    - h: height of environment (int)
-    - w: width of environment (int)
-    - resp: neural response to analyze (array of shape n_episodes x len_delay x n_neurons)
-    - loc: agent's location corresponding to resp (array of shape n_episodes x len_delay x 2)
-    - title: str
-    - norm_by_occupancy: whether to normalize by dividing the summed response by occupancy at each location (Bool, default=True)
-    - plot: plot figure or not (default = False)
-    Returns:
-    - spatial_act: activity of this cell when agent is at different locations in space (h x w matrix)
-    """
-    # initialize matrix for heatmap
-    spatial_act = np.zeros((h, w))
-    occurence = np.zeros((h, w))
-
-    for hi in range(h):
-        for wi in range(w):
-            spatial_act[hi, wi] = np.sum(resp[:, :, i_neuron][:, :, None][np.all(loc == [hi, wi], axis=2)])
-            occurence[hi, wi] = np.sum(np.all(loc == [hi, wi], axis=2))
-
-    if norm_by_occupancy:
-        spatial_act = spatial_act / occurence
-
-    if norm_by_ptp:
-        spatial_act = (spatial_act - np.min(spatial_act[np.isnan(spatial_act) == False], keepdims=True)) / np.ptp(
-            spatial_act[np.isnan(spatial_act) == False], keepdims=True)
-
-    if plot:
-        fig, ax = plt.subplots()
-        cax = ax.imshow(spatial_act, cmap='jet')
-        cbar = plt.colorbar(cax, ax=ax, label='unit activation')
-        ax.set_aspect('auto')
-        plt.title(f'neuron #{i_neuron}')
-        fig.suptitle(title)
-        plt.show()
-
-    return spatial_act
-
 
 def split_train_and_test(percent_train, total_resp, total_stim, seed):
     """
@@ -347,17 +305,6 @@ def sequentiality_analysis(sorted_matrix):
 
     sqi = np.sqrt(peak_entropy * temporal_sparsity)
     return peak_entropy, temporal_sparsity, sqi
-
-
-def info_loss_rate(resp, stim):
-    # Slope of linear regression fit of single-time stim-decoding curve
-    # returns: score, coefficient
-    len_delay = np.shape(resp)[1]
-    accuracies, accuracies_shuff = decode_sample_from_single_time(resp, stim, max_iter=1000)
-    X = np.arange(len_delay).reshape(-1, 1)
-    y = accuracies.reshape(-1, 1)
-    reg = LinearRegression().fit(X, y)
-    return reg.score(X, y), reg.coef_
 
 
 def plot_sorted_vd(resp_dict, remove_nan=True):
@@ -563,86 +510,4 @@ def single_cell_visualization(total_resp, binary_stim, cell_nums, type):
         plt.savefig(figpath + '/single_unit_v_time/' + type + f'/{i_neuron}.png')
 
 
-def pca_analysis(total_resp, total_stim):
-    """
-    Performs PCA analysis. Plot 2d and 3d PCA visualization.
-    """
-    global figpath
-    n_episodes = np.shape(total_resp)[0]
-    len_delay = np.shape(total_resp)[1]
-    n_neurons = np.shape(total_resp)[2]
-    total_resp = np.reshape(total_resp, (n_episodes, len_delay * n_neurons))
 
-    pca_model = PCA(n_components=2)
-    pca_model.fit(total_resp)
-    scores = pca_model.transform(total_resp)  # Performs PCA
-    # print(pca_model.explained_variance_ratio_)
-    labels = np.where(total_stim == 0, 'Left', 'Right')
-
-    plt.figure()
-    plt.scatter(x=scores[:, 0], y=scores[:, 1], c=total_stim)
-    plt.xlabel('PC 1')
-    plt.ylabel('PC 2')
-    cbar = plt.colorbar(ticks=[0, 1])
-    cbar.ax.set_yticklabels(['Left', 'Right'])  # TODO: This won't render; need to manually add labels
-    plt.clim(-0.1, 1.1)
-    # plt.show()
-    plt.savefig(figpath + '/pca.png')
-
-
-def plot_LvR_ratemaps(delay_resp, delay_loc, left_stim_resp, left_stim_loc, right_stim_resp, right_stim_loc,
-                      cell_nums_all, cell_nums_seq, cell_nums_ramp, label):
-    global figpath
-    for i_neuron in cell_nums_all:
-        if i_neuron in cell_nums_ramp:
-            cell_type = 'Ramping cell'
-        elif i_neuron in cell_nums_seq:
-            cell_type = 'Sequence cell'
-        else:
-            raise Exception('Neither ramping nor sequence cell!')
-        spatial_act_all = spatial_heatmap(i_neuron=i_neuron, h=6, w=9, resp=delay_resp, loc=delay_loc, title='All',
-                                          norm_by_occupancy=True, norm_by_ptp=True, plot=False)
-        spatial_act_left = spatial_heatmap(i_neuron=i_neuron, h=6, w=9, resp=left_stim_resp, loc=left_stim_loc,
-                                           title='Left',
-                                           norm_by_occupancy=True, norm_by_ptp=True, plot=False)
-        spatial_act_right = spatial_heatmap(i_neuron=i_neuron, h=6, w=9, resp=right_stim_resp, loc=right_stim_loc,
-                                            title='Right',
-                                            norm_by_occupancy=True, norm_by_ptp=True, plot=False)
-        fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(8, 3))
-        ax1.imshow(spatial_act_all, cmap='jet')
-        ax1.set_title('All')
-        ax2.imshow(spatial_act_left, cmap='jet')
-        ax2.set_title('Left')
-        ax3.imshow(spatial_act_right, cmap='jet')
-        ax3.set_title('Right')
-        ax1.axis('off')
-        ax2.axis('off')
-        ax3.axis('off')
-        fig.suptitle(label + f' \n neuron #{i_neuron} ('+cell_type+')')
-        # plt.show()
-        plt.savefig(figpath + f'/single_unit_v_place/{i_neuron}.png')
-
-
-def plot_modulation(dev_idx1, dev_idx2, dev_labels, dev):
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(16, 8))
-    fig.suptitle(f'{dev_labels[dev_idx1]} vs {dev_labels[dev_idx2]}', fontsize=12)
-    ax1.scatter(dev[:, dev_idx1], dev[:, dev_idx2])
-    lim = max(np.max(dev[:, dev_idx1]), np.max(dev[:, dev_idx2]))
-    ax1.plot(np.arange(lim), np.arange(lim), 'r')
-    ax1.set_xlabel(f'Deviance due to {dev_labels[dev_idx1]}')
-    ax1.set_ylabel(f'Deviance due to {dev_labels[dev_idx2]}')
-    ax1.set_xlim(0, lim)
-    ax1.set_ylim(0, lim)
-    ax1.ticklabel_format(axis='both', style='scientific', scilimits=(0, 0))
-    # ax1.set_xscale('log')
-    # ax1.set_yscale('log')
-    # ax1 TODO: add sig pval threshold
-
-    n, bins, patches = ax2.hist(dev[:, dev_idx2] - dev[:, dev_idx1])
-    ax2.set_xlabel(f'({dev_labels[dev_idx2]}) - ({dev_labels[dev_idx1]})')
-    ax2.set_ylabel('Number of Units')
-    x_range = np.max(np.abs(dev[:, dev_idx2] - dev[:, dev_idx1]))
-    ax2.set_xlim(-x_range, x_range)
-    ax2.ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
-    ax2.axvline(0, color='red')
-    plt.show()
