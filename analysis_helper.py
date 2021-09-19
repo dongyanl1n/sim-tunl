@@ -5,7 +5,6 @@ from sklearn.model_selection import cross_val_score
 from itertools import compress
 from matplotlib import gridspec
 from scipy import stats
-from tabulate import tabulate
 from sklearn.decomposition import PCA
 from sklearn import svm
 import random
@@ -13,9 +12,8 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 import numpy as np
-from celluloid import Camera
 from sklearn.linear_model import LinearRegression
-import plot_utils
+from linclab_utils import plot_utils
 
 global figpath
 #figpath = ''

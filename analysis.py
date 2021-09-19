@@ -1,6 +1,6 @@
 from analysis_helper import *
 from world import *
-import plot_utils
+from linclab_utils import plot_utils
 
 plot_utils.linclab_plt_defaults()
 plot_utils.set_font(font='Helvetica')
