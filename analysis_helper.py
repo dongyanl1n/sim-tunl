@@ -16,7 +16,7 @@ from sklearn.linear_model import LinearRegression
 from linclab_utils import plot_utils
 
 global figpath
-#figpath = ''
+# figpath = '' # path to save figure
 
 def make_autopct(values):
     def my_autopct(pct):

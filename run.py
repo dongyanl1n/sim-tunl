@@ -18,7 +18,6 @@ elif mem_vd or nomem_vd:
     len_delays_p = [1, 1, 1]
     ld = max(len_delays)
 
-
 len_edge = 7
 rwd = 100
 inc_rwd = -20

@@ -5,8 +5,8 @@ from linclab_utils import plot_utils
 plot_utils.linclab_plt_defaults()
 plot_utils.set_font(font='Helvetica')
 
-data = np.load('2021_06_11_23_51_15_tunl_nomem.npz')
-label = 'NoMem NLF'
+data = np.load('')  # data.npz file
+label = 'NoMem TUNL'
 
 
 stim = data['stim']  # n_episode x 2
