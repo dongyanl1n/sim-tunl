@@ -50,7 +50,6 @@ You can customize the architecture of the network by changing the arguments. It 
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=20G
-#SBATCH --mail-type=END,FAL
 
 module load python/3.
 module load python/3.7/cuda/10.2/cudnn/7.6/pytorch/1.5.0
