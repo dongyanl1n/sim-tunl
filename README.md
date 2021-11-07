@@ -36,7 +36,7 @@ You can customize the architecture of the network by changing the arguments. It 
     - `TunlEnv_nomem`: non-mnemomic
   - `1d/model1d.py`: actor-critic network without CNN
   - `1d/run1d.py`: script for training the agent and collecting data 
-  - `1d/analysis1d.py`: script for running the analysis on collected data to reproduce figures
+  - `1d/analysis1d.py`: script for running the analysis on collected data to reproduce figures. Also uses functions in `analysis_helper.py`.
 
     
 ## Run
